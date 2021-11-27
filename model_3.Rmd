@@ -1,0 +1,171 @@
+---
+title: "Lab 2 WIP BKB"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Outstanding Questions or Comments
+>`Do we need to split our data set into a training and testing set? 
+Can someone check my assumptions for model 1? 
+I don't think we need assumptions for Part 2, but can someone double check?
+I didn't do log transforms for the second part. I'm not sure if we need them but let me know'
+
+## Read Libraries
+```{r}
+library(tidyverse)
+library(patchwork)
+library(stargazer)
+library(sandwich)
+library(lmtest)
+library(ggplot2)
+library(dplyr)
+# library(aods3)
+library(stargazer)
+theme_set(theme_bw())
+```
+## Load Data
+```{r}
+library(readr)
+Salesstore <- read_csv("Salesstore.csv")
+```
+
+## Initial Snapshot of Data
+```{r}
+head(Salesstore)
+nrow(Salesstore)
+```
+## EDA to discover patterns, outliers, or wrong data entries
+### Scatter to determine best linear relationships
+```{r}
+LL_order_scatter_plot <- ggplot(data = Salesstore, aes(x = (Order_Quantity), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Level Scatter Plot of Profits by Order Quantity", x="Order Quantity", y="Profits")
+LgL_order_scatter_plot <- ggplot(data = Salesstore, aes(x = (Order_Quantity), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Level Scatter Plot of Profits by Order Quantity", x="Order Quantity", y="Log Profits")
+LLg_order_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Order_Quantity), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Log Scatter Plot of Profits by Order Quantity", x="Log Order Quantity", y="Profits")
+LgLg_order_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Order_Quantity), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Log Scatter Plot of Profits by Order Quantity", x="Log Order Quantity", y="Log Profits")
+LL_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = (Sales), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Level Scatter Plot of Profits by Sales", x="Sales", y="Profits")
+LLg_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Sales), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Log Scatter Plot of Profits by Sales", x="Log Sales", y="Profits")
+LgL_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = (Sales), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Level Scatter Plot of Profits by Sales", x="Sales", y="Log Profits")
+LgLg_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Sales), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Log Scatter Plot of Profits by Sales", x="Log Sales", y="Log Profits")
+LL_order_scatter_plot
+LLg_order_scatter_plot
+LgL_order_scatter_plot
+LgLg_order_scatter_plot
+LL_sales_scatter_plot
+LLg_sales_scatter_plot
+LgL_sales_scatter_plot
+LgLg_sales_scatter_plot
+```
+- After our initial EDA, we have found that the most linear relationship is between the Log-Level scatter plot of Profits by Order Quantity. We will use this relationship for our first model
+- It's important to note that 365 of the 703 rows of data had missing values when we performed our initial data manipulations because of negative profit values before the log transformation. We then added 5000 to all profit values to ensure we wouldn't lose data due to negative values (The minimum profit value was around -$4900). We will take this adjustment into account when interpreting our results.
+- The Order Quantity variable is distributed from 0 to 50, and the profits variable has data values between -5,000 to over 7,5000. The outliers for the profit variable are either very low (~$-5,000) or very high (>$2,500). The doesn't seem to be many outliers for the order quantity variable.
+
+## Part 1: Model 1 Log-Level Profit vs Order Quantity and its P-Value
+```{r}
+model_1 <- lm(log(Salesstore$Profit+5000) ~ (log(Salesstore$Order_Quantity)), na.action = na.exclude)
+summary(model_1)
+```
+
+- The p value of Model 1 shows that the Order Quantity is significant when determining the profit. The estimated sales quantity coefficient is 0.002, which means that for every change in the order quantity, the profit increases by (0.002 * the change in order quantity * 100%). If the order quantity increased by one, the profit would increase by 0.2%.
+
+## Scatter with Model 1
+```{r}
+#Show the linear regression line on our initial Log-Level Scatter Plot of Profits by Order Quantity
+plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = summary(model_1)$coefficients[2, 1])
+```
+  
+## Check Assumptions for Large Scale Linear Models
+1) Is the data IID? From what background we are given on the data, we are unable to conclude if the data is truly IID. This dataset contain various details of products sold at a store, but we don't know if the sample was taken at random from the products at a given store. If the sample was taken at random, the data would be IID as long as the model is used to describe relationships for products from that store. This data shouldn't be used to predict how products will sell at different stores. For more information on where we found our data you can visit: https://www.kaggle.com/anuvagoyal/sales-store-product-details
+
+2) Does a unique BLP exist? Yes, a unique BLP exists. The variables used are log profits and order quantity, which has a linear relationship and from it's distribution you can see that there is only one possible BLP.
+
+## Part 2: Categorical Variable Models
+- The second model will estimate this relationship with additional covariates including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product.
+- There will be 3 different models used: One with categorical variables for customer segment, one with categorical variables for product category, and a final with categorical variables for both. We will use ANOVA tests to determine which categorical variables impact our model the most.
+```{r}
+#Determine all possible values in our categorical columns
+Salesstore %>% count(Customer_Segment)
+Salesstore %>% group_by(Product_Category) %>% tally()
+```
+
+```{r}
+#adjust the dataframe to separate the categorical variables into binary columns
+Salesstore$if_consumer <- ifelse(Salesstore$Customer_Segment== 'Consumer', 1, 0)
+Salesstore$if_corporate <- ifelse(Salesstore$Customer_Segment== 'Corporate', 1, 0)
+Salesstore$if_home_office <- ifelse(Salesstore$Customer_Segment== 'Home Office', 1, 0)
+Salesstore$if_small_business <- ifelse(Salesstore$Customer_Segment== 'Small Business', 1, 0)
+Salesstore$if_furniture <- ifelse(Salesstore$Product_Category== 'Furniture', 1, 0)
+Salesstore$if_office_supplies <- ifelse(Salesstore$Product_Category== 'Office Supplies', 1, 0)
+Salesstore$if_technology <- ifelse(Salesstore$Product_Category== 'Technology', 1, 0)
+head(Salesstore)
+```
+```{r}
+#create 3 new models with categorical variables
+model_customer <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_consumer + Salesstore$if_corporate + Salesstore$if_home_office + Salesstore$if_small_business, na.action = na.exclude)
+model_product <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_furniture + Salesstore$if_office_supplies + Salesstore$if_technology, na.action = na.exclude)
+model_customer_product <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_consumer + Salesstore$if_corporate + Salesstore$if_home_office + Salesstore$if_small_business + Salesstore$if_furniture + Salesstore$if_office_supplies + Salesstore$if_technology, na.action = na.exclude)
+```
+
+```{r}
+#perform a coefficient test on the models to understand which variables are significant and their estimated coefficience and standard errors.
+coeftest(model_customer, vcov = vcovHC)
+coeftest(model_product, vcov = vcovHC)
+coeftest(model_customer_product, vcov = vcovHC)
+```
+- From our results, we can see that in our model_customer model, no additional categorical variables are significant. This means that the customer segment doesn't have a significant effect on the profit. In our model_product model, if_office_supplies is significant. This means that if the product category is office supplies, it has a significant effect on profit. In our model_customer_product model, all categorical variables have the same expected significance from the previous model. Office supplies is the only significant categorical variable. 
+- Because no customer segment variables are significant, let's focus on only product category variables. We're going to compare different versions of the second model with an ANOVA test to see if dropping insignificant categorical variables will improve model quality.
+
+```{r}
+#perform ANOVA tests to compare different versions of the model_product model to see how to best predict profit
+#model_1 - has Order_Quantity variable
+model_office <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) +  Salesstore$if_office_supplies, na.action = na.exclude)
+#model_product - has Order_Quantity, if_furniture, if_office_supplies, and if_technology
+anova(model_1, model_office, model_product, test='F')
+```
+- Due to the 728 degrees of freedom in the first model, you cannot determine the interaction effect or p value. We can see that model_office does a better job at predicting profit than model_product because model_profit has 2 insignificant variables.
+
+```{r}
+coeftest(model_1, vcov = vcovHC)
+coeftest(model_office, vcov = vcovHC)
+```
+- Given the fact that model_office has two significant variables, and model_1 only has one. We will use model_office as a better predictor for profit. 
+
+
+## Model 3: Interaction Term
+```{r}
+
+model_office_interaction <- lm(log(Salesstore$Profit+5000) ~ Salesstore$Order_Quantity * Salesstore$if_office_supplies, na.action = na.exclude)
+
+model_product_interaction <- lm(log(Salesstore$Profit+5000) ~ Salesstore$Order_Quantity * Salesstore$if_furniture + Salesstore$Order_Quantity * Salesstore$if_office_supplies + Salesstore$Order_Quantity * Salesstore$if_technology, na.action = na.exclude)
+
+
+coeftest(model_office_interaction, vcov = vcovHC)
+coeftest(model_product_interaction, vcov = vcovHC)
+
+anova(model_1, model_office_interaction, model_product_interaction, test='F')
+
+```
+
+## Final ANOVA Test with Interaction Models
+```{r}
+
+anova(model_1, model_office_interaction, model_product_interaction, test='F')
+
+```
