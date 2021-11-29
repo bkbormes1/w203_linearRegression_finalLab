@@ -1,0 +1,189 @@
+---
+title: "HW week 12"
+author: "Blake Bormes, Giulia Olsson, Siddharth Ashokkumar"
+subtitle: 'w203: Statistics for Data Science'
+
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r load packages, message = FALSE}
+library(tidyverse)
+library(ggplot2) 
+
+library(sandwich)
+library(stargazer)
+
+
+library(magrittr)
+
+library(patchwork)
+library(sandwich)
+library(lmtest)
+
+
+library(car)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r source functions from project, echo = FALSE}
+source('./src/load_and_clean.R')
+source('./src/get_robust_se.R')
+```
+
+```{r load data} 
+d <- load_and_clean(input = 'videos.txt')
+```
+# Regression analysis of YouTube dataset
+
+You want to explain how much the quality of a video affects the number of views it receives on social media. In a world where people can now buy followers and likes, would such an investment increase the number of views that their content receives?  **This is a causal question.** 
+
+You will use a dataset created by Cheng, Dale and Liu at Simon Fraser University.  It includes observations about 9618 videos shared on YouTube.  Please see [this link](http://netsg.cs.sfu.ca/youtubedata/) for details about how the data was collected.
+
+You will use the following variables:
+
+- `views`: the number of views by YouTube users.
+- `average_rating`: This is the average of the ratings that the video received, it is a renamed feature from `rate` that is provided in the original dataset. (Notice that this is different from `cout_of_ratings` which is a count of the total number of ratings that a video has received. 
+- `length:` the duration of the video in seconds.
+
+a. Perform a brief exploratory data analysis on the data to discover patterns, outliers, or wrong data entries and summarize your findings.
+
+```{r conduct EDA in this chunk}
+#plot counts of each variable
+pViews <- ggplot(data = d, aes(x = (views)) ) +
+  geom_histogram(bins = 25) +
+  labs(title = "Distribution of views",x = "Views",y = "Count") +
+  xlim(0,250000) + ylim(0,2000)
+pAvg_Rating <- ggplot(data = d, aes(x = (average_rating)) ) +
+  geom_histogram(bins = 10) +
+  labs(title = "Distribution of average rating",x = "Average Rating",y = "Count")
+pLength <- ggplot(data = d, aes(x = (length)) ) +
+  geom_histogram(bins = 25) +
+  labs(title = "Distribution of length",x = "Length",y = "Count") +
+  xlim(0,1000)
+
+pViews
+pAvg_Rating
+pLength
+```
+> '
+With a quick analysis, I have found the following insights for the views variable:
+- 39 rows had non finite values, and 2 rows had missing values
+- Most views are closer to 0, but they can be up to about 500,000
+- There are significantly more videos (>80% of videos) with lower view counts (25,000) or less
+I have found the following insights for the average rating variable:
+- There were 9 rows of non-finite variables
+- Ratings are on a scale of 0 to 5
+- Most ratings are closer to 5
+- Very few ratings are around 1, 2, and 3. They're either 0, or between 4 and 5
+I have found the following insights for the length variable:
+- 51 rows had non finitie variables
+- 2 rows had missing values
+- Most videos (~80%) had a length of 300 seconds or less (5 min).
+- The higher length videos were around 3,500 seconds or one hour
+More analysis on reelations between variables is performed in section B.'
+
+b. Based on your EDA, select an appropriate variable transformation (if any) to apply to each of your three variables.  You will fit a model of the type,
+
+$$
+  f(\text{views}) = \beta_0 + \beta_1 g(\text{rate})  + \beta_3 h(\text{length})
+$$ 
+
+Where $f$, $g$ and $h$ are sensible transformations, which might include making *no* transformation. 
+```{r}
+scatterplot( (d$average_rating), log(d$views)) 
+
+scatterplot( log(d$length), log(d$views)) 
+#the best regressions for the three variables means we will be taking the log of views and the log of length.
+
+```
+
+
+```{r fit a regression model here}
+model <- lm(log(views) ~ average_rating + log(length), data = d)
+
+ stargazer(
+   model, 
+   type = 'text', 
+   se = list(get_robust_se(model))
+   )
+
+
+```
+
+
+
+c. Using diagnostic plots, background knowledge, and statistical tests, assess all five assumptions of the CLM. When an assumption is violated, state what response you will take.  As part of this process, you should decide what transformation (if any) to apply to each variable. Iterate against your model until your satisfied that at least four of the five assumption have been reasonably addressed. 
+
+> 1. **IID Data:** 'The data is not IID. It was collected by pulling videos that are in the top 20 related videos queue of any of the videos analyzed prior. This means that the video data is not independent because the videos aren't sampled at random. The response I'll take to this is to acknowledge that my data set isn't completely IID and my findings are specific for videos related to the topic or theme that all videos shared.'
+> 2. **No Perfect Colinearity:** 'I agree that there is no perfect colinearity, which was found during our analysis of how the variables related to each other. Views and length and views and average rating were not colinear. Length and average rating cannot be colinear because average rating is on a scale from 0 to 5 and length goes from 0 to about 1 hour on average.' 
+> 3. **Linear Conditional Expectation:** 'To assess whether there is a linear conditional expectation, we've learned to look at the predicted vs. residuals of the model as well as both the average rating and the length variables. All three graphs have residuals appearing linear around 0, meaning this satisfies the assumption of a linear conditional expectation' 
+
+```{r code and plots assessing linear conditional expectation}
+d_no_na %>% 
+  mutate(
+    model_preds = predict(model), 
+    model_resids = resid(model)
+  ) %>% 
+  ggplot(aes(model_preds, model_resids)) + 
+  geom_point() + 
+  stat_smooth()
+
+firstplot <- d_no_na %>%
+  ggplot(aes(x = average_rating, y = model_resids)) +
+  geom_point() +
+  stat_smooth(method = 'lm') +
+  scale_x_continuous(name = 'Average Rating', labels= scales::comma) +
+  scale_y_continuous(name = 'Model Residuals', labels = scales::comma)+
+  labs(title = 'Showing relationship between Average Rating and Model Residuals', subtitle = 'Shows that data is distributed'
+  )
+firstplot
+
+secondplot <- d_no_na %>%
+  ggplot(aes(x = log_len, y = model_resids)) +
+  geom_point() +
+  stat_smooth(method = 'lm') +
+  scale_x_continuous(name = 'Video Length as Log', labels= scales::comma) +
+  scale_y_continuous(name = 'Model Residuals', labels = scales::comma) +
+  labs(title = 'Showing relationship between Log of Video Length and Model Residuals', subtitle = 'Shows that data is distributed')
+secondplot
+
+```
+```{r}
+
+#rlang::last_error()
+
+
+```
+> 4. **Homoskedastic Errors:** 'To assess whether the distribution of the errors is homoskedastic, we can examine the scale-location plot. Homoskedasticity would show up on this plot as a flat smoothing curve. The curve is linear with a slope of about 0, meaning my model satisfies the assumption of homoskedastic errors. We also performed the Breush Pagan Test, which yields a p-value of 2.2x10^-16, meaning we can reject the null hypothesis and conclude that there is no evidence of homoskedastic variance. '
+
+```{r code and plots assessing error variance}
+lastPlot <- d_no_na %>%
+  ggplot() +
+  aes(x = sort(model_preds), y = model_resids) +
+  geom_point() +
+  stat_smooth() +
+  scale_x_continuous(name = 'Model Predictions', labels= scales::comma) +
+  scale_y_continuous(name = 'Model Residuals', labels = scales::comma) +
+  labs(title = 'Homoskedastic Error Observation', subtitle = 'Evidence of heteroskedastic variance')
+lastPlot
+
+lmtest::bptest(model)
+```
+
+> 5. **Normally Distributed Errors:** 'When assessing the normality of your error distribution, I'm looking for the histogram of residuals and the qqplot to show a normal relationship. 
+In my  plot, you can see that errors seem to be normally distributed, meaning that my model satisfies the assumption of normally distributed errors.'
+
+```{r code and plots assessing normally distributed errors}
+plot_one <- d_no_na %>% 
+  ggplot(aes(x = resid(model))) + 
+  geom_histogram()
+plot_two <- d_no_na %>% 
+  ggplot(aes(sample = resid(model))) + 
+  stat_qq() + stat_qq_line()
+plot_one / plot_two
+```
