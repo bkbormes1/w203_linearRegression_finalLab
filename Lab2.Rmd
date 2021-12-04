@@ -34,7 +34,7 @@ Salesstore <- read_csv("Salesstore.csv")
 
 ## Introduction
 
-In our Lab 2, our team wanted to investigate the relationship between the number of sales and profit derived from said sales at an unspecified store. This relationship could help the public understand the general profitability of orders, but more importantly, also it could also help our audience to understand the relationship between certain product categories, customer segments, and profits. 
+In our Lab 2, our team wanted to investigate the relationship between the number of sales and profit derived from said sales at an unspecified store. This relationship could help the public understand the general profitability of orders, but more importantly, also it could also help our audience to understand the relationship between certain product categories, customer segments, order quantities, and profits. 
 
 A real-world example of this is Costco; large American retailer, Costco, often sells certain consumer goods (e.g. groceries) at a discounted price and negative margin to get customer foot traffic. Once customers are enticed by the eye-catching, low-priced goods, they often engage with higher margin items (e.g., consumer electronics) that are placed along the way to the lower-priced items of the store. 
 
@@ -46,17 +46,17 @@ Our data source from a Sales Store Product Details dataset in CSV format on Kagg
 
 The dataset contains various details of products sold at a store. The dataset has 13 columns describing product and sales data, no missing values, and over 700 rows. 
 
-Because of its structure, this dataset required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Number of Sales, Product Category, Product Sub Category, Product Name, and Customer Segment. The large amount of data will allow us to have large exploratory and testing datasets. Further analysis will need to be done to ensure the “other” categories for Product Category and Customer Segment are clean data entries. For example, are there N/A, Unknown, or Other values or are there clearly defined outputs for each data entry? 
+Because of its structure, this dataset required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Number of Sales, Order Quantity, Product Category, Product Sub Category, Product Name, and Customer Segment. The large amount of data will allow us to have large exploratory and testing datasets. Further analysis will need to be done to ensure the “other” categories for Product Category and Customer Segment are clean data entries. For example, are there N/A, Unknown, or Other values or are there clearly defined outputs for each data entry? 
 
 For our models, we wanted to take deeper look into how sales affect profit and what effects 'Product Category' and 'Customer Segment' variables have on profit as well. 
 
 In order to answer our research question, we built three models: 
 
-1. The first model estimated the relationship between the number of sales and the profit. Profit was the Y variable and Number of Sales was the X variable. We used scatter plots and t-tests to test the strength of the correlation coefficient.
+1. The first model estimated the relationship between order quantity and sales or profit. Profit or Sales was the Y variable and Order Quantity was the X variable. We used scatter plots and t-tests to test the strength of the correlation coefficient, and to find the most linear relationship to explore.
 
-2. The second model estimated this relationship with additional covariants including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product. This modeling section may require a couple of tests to find the relationship between the different variables (e.g., log transforms) and Wald tests to see if the relationship between certain variables is strong enough to warrant inclusion in the model.
+2. The second model estimated this relationship with additional covariants including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product. This modeling section may require a couple of tests to find the relationship between the different variables (e.g., log transforms) such as ANOVA tests to see if the relationship between certain variables is strong enough to warrant inclusion in the model.
 
-3. The third model added an interaction term between product category and number of sales.  This allowed us to investigate whether the effect of sales was heterogeneous given different product categories.
+3. The third model added an interaction term between product category and number of sales.  This allowed us to investigate whether the effect of sales was heterogeneous given different product categories through different tests including ANOVA and the Akaike Information Criterion test.
 
 ## Initial Snapshot of Data in Order to Understand the Data
 
@@ -73,7 +73,7 @@ nrow(Salesstore)
 
 ## Exploratory Data Analysis
 
-In this section, we begin to explore our data in order to determine what models we had to build later on. Here, we wanted to discover patterns, outliers, and potentially wrong data entries. Our chosen form of plotting was the scatter plot to determine best linear relationships, which 
+In this section, we begin to explore our data in order to determine what models we had to build later on. Here, we wanted to discover patterns, outliers, and potentially wrong data entries. Our chosen form of plotting was the scatter plot to determine best linear relationships.
 
 ```{r}
 LL_order_scatter_plot <- ggplot(data = Salesstore, aes(x = (Order_Quantity), y = (Profit+5000))) + 
@@ -128,20 +128,20 @@ model_1 <- lm(log(Salesstore$Profit+5000) ~ (log(Salesstore$Order_Quantity)), na
 summary(model_1)
 ```
 
-The p-value of Model 1 shows that the 'Order Quantity' is significant when determining the profit. The estimated sales quantity coefficient is 0.002, which means that for every change in the order quantity, the profit increases by the following: (0.002 * the change in 'order quantity' * 100%). If the order quantity increased by 1, the profit would increase by 0.2%. We ensured not to include N/A values here. 
+The p-value of Model 1 shows that the 'Order Quantity' is significant when determining the profit. The estimated sales quantity coefficient is 0.002, which means that for every change in the order quantity, the profit increases by the following: (0.002 * the change in 'order quantity' * 100%). If the order quantity increased by 1, the profit would increase by 0.2%. We ensured not to include N/A values here. Also, it's important to note the R2 value of 0.36 is relatively low meaning that our confidence in the linear model should not be extremely high because it doesn't do an insanely great job of explaining the data.
 
 ### Model 1 Scatterplot 
 
 Within this scatterplot, we show the linear regression line on our initial log-level scatter plot of 'Profits' by 'Order Quantity' from our EDA section. 
 
 ```{r}
-plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = summary(model_1)$coefficients[2, 1])
+plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = 0.034301)
 ```
 
 ## Model Building Process: Part 2
 ### Model 2: Categorical Variable Models
 
-The second model we created estaimates the same relationship as Model 1, but with additional covariates including the 'customer segment' and 'product category,' so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product.
+The second model we created estimates the same relationship as Model 1, but with additional covariates including the 'customer segment' and 'product category,' so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product.
 
 There will be 3 different models used: 
 
@@ -214,9 +214,7 @@ Now, we'll do the t-tests between these two models (model_1 and model_office). L
 coeftest(model_1, vcov = vcovHC)
 coeftest(model_office, vcov = vcovHC)
 ```
-Given the fact that model_office has two significant variables, and model_1 only has one. 
-
-Therefore, we will use model_office as a better predictor for profit. 
+Given the fact that model_office has two significant variables, and model_1 only has one, we will use model_office as a better predictor for profit. 
 
 ## Model Building Process: Part 3
 ### Model 3: Interaction Term
@@ -227,7 +225,7 @@ Our third model analyzes the effect of a possible interaction between 'Order Qua
 model_office_interaction <- lm(log(Salesstore$Profit+5000) ~ Salesstore$Order_Quantity * Salesstore$if_office_supplies, na.action = na.exclude)
 coeftest(model_office_interaction, vcov = vcovHC)
 ```
-From this coefficient test, we see that model_office_interaction indeed has both office_supplies and the interaction term of 'Order Quantity' and 'Office Supplies' is significant as well. 
+From this coefficient test, we see that model_office_interaction indeed has both office_supplies and the interaction term of 'Order Quantity' and 'Office Supplies' is significant as well. This interaction makes sense because people probably buy office supplies in bulk.
 
 We can perform an ANOVA test as well as an Akaike Information Criterion test (which calculates the information value of each model by applying a score for the amount of information explained by the model) for model fit to confirm that the model with the 'Office Supplies' interaction term is the best fit among the 3 models discussed (model_1, model_office, and model_office_interaction). 
 
@@ -260,7 +258,7 @@ Need to comment on:
 
 As a team, evaluate all of the large sample model assumptions. However, you do not necessarily want to discuss every assumption in your report. Instead, highlight any assumption that might pose significant problems for your analysis. For any violations that you identify, describe the statistical consequences. If you are able to identify any strategies to mitigate the consequences, explain these strategies. 
 
-For our first model, model 1, we evaluated all its assumptions. 
+For our first model, model 1 a large scale linear model, we evaluated all its assumptions. 
 
 1) Is the data IID? 
 
