@@ -1,0 +1,279 @@
+---
+title: "w203 Lab 2"
+author: "Siddharth Ashokkumar, Blake Bormes, Giulia Olsson"
+subtitle: 'w203: Statistics for Data Science'
+output:
+  bookdown::pdf_document2: 
+    toc: false
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages and set options, include=FALSE} 
+library(tidyverse)
+library(patchwork)
+library(stargazer)
+library(sandwich)
+library(lmtest)
+library(ggplot2)
+library(dplyr)
+install.packages("stargazer")
+library(stargazer)
+install.packages('AICcmodavg')
+library(AICcmodavg)
+theme_set(theme_bw())
+```
+
+```{r}
+library(readr)
+Salesstore <- read_csv("Salesstore.csv")
+```
+
+## Introduction
+
+In our Lab 2, our team wanted to investigate the relationship between the order quantity and profit derived from sales at an unspecified store. This relationship could help the public understand the general store profitability, but more importantly, also it could also help our audience to understand the relationship of profit to certain variables like product categories, customer segments, order quantities, and profits. Different retailers take on different sales strategies. 
+
+A real-world familiar example of this is Costco; large American retailer, Costco, often sells certain consumer goods (e.g. groceries or office supplies) at a discounted price and negative margin to get customer foot traffic. Once customers are enticed by these eye-catching, low-priced goods, they often engage with higher margin items (e.g., consumer electronics) that are placed along the way to the lower-priced items of the store. 
+
+Our team wanted to understand interesting relationships exist within the store of our chosen data set.Finding correlations was our metric of success. 
+
+## Data and Research Design
+
+Our data source from a Sales Store Product Details dataset in CSV format on Kaggle found at this link: https://www.kaggle.com/anuvagoyal/sales-store-product-details. These types of data sets are studied to find out the patterns in the selling structure and profit earned from them. 
+
+The data set contains various details of products sold at a store. The data set has 13 columns describing product and sales data, no missing values, and over 700 rows. 
+
+Because of its structure, this dat aset required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Order Quantity, Product Category, Product Sub Category, Product Name, and Customer Segment. The large amount of data will allow us to have large exploratory and testing datasets. Further analysis will need to be done to ensure the “other” categories for Product Category and Customer Segment are clean data entries. For example, are there N/A, Unknown, or Other values or are there clearly defined outputs for each data entry? 
+
+Formally, our research question is as follows:
+What effects do variables like 'order quantity, 'product category, and 'customer segment' have on profit? 
+
+Our built models explore this question.
+
+In order to answer our research question, we built three models: 
+
+1. The first model estimated the relationship between order quantity and sales or profit. Profit or Sales was the Y variable and Order Quantity was the X variable. We used scatter plots and t-tests to test the strength of the correlation coefficient, and to find the most linear relationship to explore.
+
+2. The second model estimated this relationship with additional covariates including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product. This modeling section may require a couple of tests to find the relationship between the different variables (e.g., log transforms) such as ANOVA tests to see if the relationship between certain variables is strong enough to warrant inclusion in the model.
+
+3. The third model added an interaction term between product category and order quantity. This allowed us to investigate whether the effect of sales was heterogeneous given different product categories through different tests including ANOVA and the Akaike Information Criterion test.
+
+## Initial Snapshot of Data in Order to Understand the Data
+
+The below gives us a good sense of what categories lie within the data. Here, we see that the data includes Order ID, order priority, order quantity, profit, customer name, product category, and more details that will help us do our research.
+
+```{r}
+head(Salesstore)
+```
+And next, we see that the data set was robust, meaning it had a significant amount of data within, 730 rows of information across various columns. 
+
+```{r}
+nrow(Salesstore)
+```
+
+## Exploratory Data Analysis
+
+In this section, we begin to explore our data in order to determine what models we had to build later on. Here, we wanted to discover patterns, outliers, and potentially wrong data entries. Our chosen form of plotting was the scatter plot to determine best linear relationships.
+
+```{r}
+LL_order_scatter_plot <- ggplot(data = Salesstore, aes(x = (Order_Quantity), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title = "Level-Level Scatter Plot of Profits by Order Quantity", x="Order Quantity", y="Profits")
+LgL_order_scatter_plot <- ggplot(data = Salesstore, aes(x = (Order_Quantity), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Level Scatter Plot of Profits by Order Quantity", x="Order Quantity", y="Log Profits")
+LLg_order_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Order_Quantity), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Log Scatter Plot of Profits by Order Quantity", x="Log Order Quantity", y="Profits")
+LgLg_order_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Order_Quantity), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Log Scatter Plot of Profits by Order Quantity", x="Log Order Quantity", y="Log Profits")
+LL_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = (Sales), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Level Scatter Plot of Profits by Sales", x="Sales", y="Profits")
+LLg_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Sales), y = (Profit+5000))) + 
+  geom_point() + 
+  labs(title="Level-Log Scatter Plot of Profits by Sales", x="Log Sales", y="Profits")
+LgL_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = (Sales), y = log(Profit+5000))) + 
+  geom_point() + 
+  labs(title="Log-Level Scatter Plot of Profits by Sales", x="Sales", y="Log Profits")
+LgLg_sales_scatter_plot <- ggplot(data = Salesstore, aes(x = log(Sales), y = log(Profit+5000))) + 
+  geom_point() + labs(title="Log-Log Scatter Plot of Profits by Sales", x="Log Sales", y="Log Profits")
+```
+
+Below, we'll plot our exploration.
+
+```{r}
+LL_order_scatter_plot
+LgL_order_scatter_plot
+LLg_order_scatter_plot
+LgLg_order_scatter_plot
+LL_sales_scatter_plot
+LLg_sales_scatter_plot
+LgL_sales_scatter_plot
+LgLg_sales_scatter_plot
+```
+
+Through this first EDA, we conclude that most linear relationship between variables being explored is between the Log-Level scatter plot of Profits by Order Quantity. We will use this relationship for our first model.
+
+It's important to note that 365 of the 703 rows of data had missing values when we performed our initial data manipulations because of negative profit values before the log transformation. We then added the number of '5000' to all profit values to ensure we wouldn't lose data due to negative values. We selected 5000 because the minimum profit value was around -$4900. We take this adjustment into account when interpreting our results.
+
+The 'Order Quantity' variable is distributed from 0 to 50, and the 'profits' variable has data values between -5,000 to over 7,5000. The outliers for the profit variable are either very low, around -5,000, or very high, more than 2,500. There do not seem to be many outliers for the 'order quantity' variable.
+
+## Model Building Process: Part 1
+### Model 1: Log-Level Profit vs Order Quantity and its P-Value
+
+```{r}
+model_1 <- lm(log(Salesstore$Profit+5000) ~ ((Salesstore$Order_Quantity)), na.action = na.exclude)
+summary(model_1)
+```
+
+The p-value of Model 1 shows that the 'Order Quantity' is significant when determining the profit. The estimated sales quantity coefficient is 0.002, which means that for every change in the order quantity, the profit increases by the following: (0.002 * the change in 'order quantity' * 100%). If the order quantity increased by 1, the profit would increase by 0.2%. We ensured not to include N/A values here.
+
+It is important to note the R-squared value of 0.03 is relatively low meaning that our confidence in the linear model should not be extremely high because it doesn't do an insanely great job of explaining the data.
+
+### Model 1 Scatterplot 
+
+Within this scatterplot, we show the linear regression line on our initial log-level scatter plot of 'Profits' by 'Order Quantity' from our EDA section. 
+
+```{r}
+plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = summary(model_1)$coefficients[2, 1])
+```
+
+## Model Building Process: Part 2
+### Model 2: Categorical Variable Models
+
+The second model we created estimates the same relationship as Model 1, but with additional covariates including the 'customer segment' and 'product category,' so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product.
+
+There will be 3 different models used: 
+
+1. Categorical variables for customer segment
+2. Categorical variables for product category
+3. Categorical variables for both customer segment and product category. 
+
+We used ANOVA tests to determine which categorical variables impact our model the most.
+
+First, we determined all possible values in our categorical columns. 
+
+```{r}
+Salesstore %>% count(Customer_Segment)
+Salesstore %>% group_by(Product_Category) %>% tally()
+```
+Next, we adjusted the dataframe to separate the categorical variables into binary columns for ease.
+
+```{r}
+Salesstore$if_consumer <- ifelse(Salesstore$Customer_Segment== 'Consumer', 1, 0)
+Salesstore$if_corporate <- ifelse(Salesstore$Customer_Segment== 'Corporate', 1, 0)
+Salesstore$if_home_office <- ifelse(Salesstore$Customer_Segment== 'Home Office', 1, 0)
+Salesstore$if_small_business <- ifelse(Salesstore$Customer_Segment== 'Small Business', 1, 0)
+Salesstore$if_furniture <- ifelse(Salesstore$Product_Category== 'Furniture', 1, 0)
+Salesstore$if_office_supplies <- ifelse(Salesstore$Product_Category== 'Office Supplies', 1, 0)
+Salesstore$if_technology <- ifelse(Salesstore$Product_Category== 'Technology', 1, 0)
+head(Salesstore)
+```
+
+Next, we created three new models with categorical variables, as we defined above.
+
+```{r}
+model_customer <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_consumer + Salesstore$if_corporate + Salesstore$if_home_office + Salesstore$if_small_business, na.action = na.exclude)
+model_product <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_furniture + Salesstore$if_office_supplies + Salesstore$if_technology, na.action = na.exclude)
+model_customer_product <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) + Salesstore$if_consumer + Salesstore$if_corporate + Salesstore$if_home_office + Salesstore$if_small_business + Salesstore$if_furniture + Salesstore$if_office_supplies + Salesstore$if_technology, na.action = na.exclude)
+```
+
+And finally, we performed a coefficient test on the models to understand which variables are significant. We also wanted to learn their estimated coefficients and more about their standard errors. 
+
+```{r}
+coeftest(model_customer, vcov = vcovHC)
+coeftest(model_product, vcov = vcovHC)
+coeftest(model_customer_product, vcov = vcovHC)
+```
+
+Our results show that in our model_customer model, no additional categorical variables are significant. This means that the customer segment does not have a significant effect on the profit. 
+
+Within the model_product model, if_office_supplies proves to be significant. This means that if the product category is equal to 'office supplies', it has a significant effect on profit. 
+
+In our model_customer_product model, all categorical variables have the same expected significance from the previous model. 'Office supplies' is the only significant categorical variable.
+
+Because no customer segment variables are significant, we moved on and decided to focus on product category variables. 
+
+Next, we're going to compare different versions of the second model with an ANOVA test to see if dropping insignificant categorical variables will improve model quality.
+
+The ANOVA tests will compare different versions of the model_product model to see how to best predict profit. 
+
+```{r}
+# model_1 - has Order_Quantity variable
+model_office <- lm(log(Salesstore$Profit+5000) ~ (Salesstore$Order_Quantity) +  Salesstore$if_office_supplies, na.action = na.exclude)
+# model_product - has Order_Quantity, if_furniture, if_office_supplies, and if_technology
+anova(model_1, model_office, model_product, test='F')
+```
+Due to the 728 degrees of freedom in the first model, we cannot determine the interaction effect or p value. 
+
+We can see that model_office does a better job at predicting profit than model_product because model_profit has 2 insignificant variables (if_technology and if_furniture).
+
+Now, we'll do the t-tests between these two models (model_1 and model_office). We dropped model_product. 
+
+```{r}
+coeftest(model_1, vcov = vcovHC)
+coeftest(model_office, vcov = vcovHC)
+```
+Given the fact that model_office has two significant variables, and model_1 only has one, we will use model_office as a better predictor for profit. 
+
+## Model Building Process: Part 3
+### Model 3: Interaction Term
+
+Our third model analyzes the effect of a possible interaction between 'Order Quantity' and any one of the significant variables in the aforementioned models, models 1 and 2. Because 'Office Supplies' is the only statistically significant variable, we choose to hone in on the interaction between 'Order Quantity' and 'Office Supplies' using the model_office as a starting point.
+
+```{r}
+model_office_interaction <- lm(log(Salesstore$Profit+5000) ~ Salesstore$Order_Quantity * Salesstore$if_office_supplies, na.action = na.exclude)
+coeftest(model_office_interaction, vcov = vcovHC)
+```
+From this coefficient test, we see that model_office_interaction indeed has both office_supplies and the interaction term of 'Order Quantity' and 'Office Supplies' is significant as well. This interaction makes sense because people probably buy office supplies in bulk.
+
+We can perform an ANOVA test as well as an Akaike Information Criterion test (which calculates the information value of each model by applying a score for the amount of information explained by the model) for model fit to confirm that the model with the 'Office Supplies' interaction term is the best fit among the 3 models discussed (model_1, model_office, and model_office_interaction). 
+
+Below is the test: 
+
+```{r}
+anova(model_1, model_office, model_office_interaction, test='F')
+aictab(list(aov(model_1), aov(model_office), aov(model_office_interaction)), modnames = c('Model 1', 'Model Office', 'Model Office Interaction'))
+```
+We see that Model Office Interaction has the lowest AIC score, confirming it's the best fit among the 3 models.
+
+## Results
+
+```{r results = 'asis'}
+stargazer(model_1, model_office, model_office_interaction, align = TRUE, type = "text")
+```
+
+To compare the models of the univariate model (model_1) of order_quantity against Profit, the multivariate model (model_office) with order_quantity, the categorical variable of if_office_supplies against Profit, and the interaction model (model_office_interaction) of order_quantity interacting with if_office_supplies against Profit, the interaction model has the highest Adjusted R-squared (0.064) as well as the lowest standard error (0.155). Although the R-squared is quite low, we feel this is explainable and acceptable given the natural variability in human shopping behavior. The interaction model still serves as an effective predictor of Store Profits. 
+
+Practically, we anticipate order quantity to interact with office supplies more than any category. Office supplies are commonly known to be sold business or larger corporate offices at bulk discounts as a sales tactic incentivize larger orders while producing smaller incremental profit margins. Understandably, the store is possibly choosing to manipulate office supplies and Profit as it is the lowest average profit/unit category ($4.85/unit) rather than a higher profit/unit category like technology ($17.21/unit). The store could continue expanding its potential bulk pricing discounts with any potential low profit margin categories (e.g., groceries) it may start selling.  
+
+## Limitations of Our Models
+### Statistical Limitations
+
+For our first model, model 1 a large scale linear model, we evaluated all its assumptions. 
+
+1) Is the data IID? 
+
+From what background we are given on the data, we are unable to conclude if the data is truly IID. This dataset contain various details of products sold at a store, but we don't know if the sample was taken at random from the products at a given store. If the sample was taken at random, the data would be IID as long as the model is used to describe relationships for products from that store. This data shouldn't be used to predict how products will sell at different stores. For more information on where we found our data you can visit: https://www.kaggle.com/anuvagoyal/sales-store-product-details
+
+2) Does a unique BLP exist? 
+
+Yes, a unique BLP exists. The variables used are 'Log Profits' and 'Order Quantity,' which has a linear relationship. From its distribution, it is obvious that there is only one possible BLP.
+
+### Structural Limitations
+
+One potential omitted variable is the Sales region. After performing some perfunctory data analysis, we see that the West Region alone is not only the most profitable but accounts for 35% for Office Supplies' sales and order quantity. It also has a profit/unit amount, $8.21, which is 69% higher than the Office Supplies category's average. No full-fledged statistical analysis was done for the effect of the bias, but if another categorical variable of "is_west_region" were created and was found to be statistically significant, this could fundamentally alter the model. The West region's over-performance could have a myriad of causes: better supply chain, bigger sales presence, larger in-built customer base, fewer competitors etc. The direction of the bias is towards zero  because the true estimator  of Profit, if the West region was included, would be potentially higher. One potential data point that could help mitigate this bias is the customer acquisition cost. If the West region is truly over-performing due to any of the issues raised above, then its customer acquisition cost/unit would be lower (lower spend marketing/promoting/advertising if competitors are scarce for example). With this data point, we could index the sales - customer acquisition cost as a new metric in addition to Profit that could help mitigate the impact of a regional advantage and make our model more inferential.
+
+## Conclusion
+
+When analyzing our Sales store data, we reviewed key variables including profit, sales, order quantity, product category, and customer segment. The data was very clean to begin, with over 700 rows of clearly-labeled data. Our initial large scale linear model analyzed the relationship between profit vs order quantity, and we found that a log-level linear model of Profit vs Order Quantity was the best linear representation of our data. This model stated that for every change in the order quantity, the profit increases by (0.002 * the change in 'order quantity' * 100%). The R-squared value was rather small at 0.03, but given the natural variability in human shopping behavior we thought we should continue exploring this segment of our data to further understand if any additional variables could help explain the relationship between profit and order quantity.
+
+In the second part of our analysis we looked into the product category and customer segment categorical variables. With coefficient tests, we determined office supplies to be the only significant product category, and there were no significant customer segments. Then we created a new model with only the office supplies categorical variable and order quantity to determine profit. With ANOVA tests and coefficient tests we confirmed that this model better predicted profit than our original Profit vs Order Quantity model.
+
+We took our analysis one step further to understand if there was any interaction between order quantity and office supplies. The coefficient test showed a p-value of 5.094e-05 for the interaction term, confirming that is significant. This makes sense because customers probably buy office supply in bulk. The negative interaction coefficient of -0.0035 could reflect a discount the store offers if office supplies are ordered in bulk, negatively affecting the profit. Lastly our Akaike Information Criterion test showed that Model Office Interaction with Profit vs (order quantity + office supplies + the interaction term) has the lowest AIC score at -645.35, confirming it does the best job explaining the data of all models explored. 
+
+To answer our research question, we determined that for every change in the order quantity, the profit increases by (0.004 * the change in 'order quantity' * 100%). If office supplies are purchased, the profit increases by (0.06 * 100%) + (-0.0035 * change in order quantity if any * 100%). The other product categoris or customer segments have no significant effect on the profit.
