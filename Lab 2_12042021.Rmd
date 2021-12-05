@@ -47,7 +47,7 @@ The dataset contains various details of products sold at a store. The dataset ha
 
 Because of its structure, this dataset required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Number of Sales, Order Quantity, Product Category, Product Sub Category, Product Name, and Customer Segment. The large amount of data will allow us to have large exploratory and testing datasets. Further analysis will need to be done to ensure the “other” categories for Product Category and Customer Segment are clean data entries. For example, are there N/A, Unknown, or Other values or are there clearly defined outputs for each data entry? 
 
-For our models, we wanted to take deeper look into how sales affect profit and what effects 'Product Category' and 'Customer Segment' variables have on profit as well. 
+For our models, we wanted to take deeper look into how order quantity affects profit and what effects 'Product Category' and 'Customer Segment' variables have on profit as well. 
 
 In order to answer our research question, we built three models: 
 
@@ -123,7 +123,7 @@ The 'Order Quantity' variable is distributed from 0 to 50, and the 'profits' var
 ### Model 1: Log-Level Profit vs Order Quantity and its P-Value
 
 ```{r}
-model_1 <- lm(log(Salesstore$Profit+5000) ~ (log(Salesstore$Order_Quantity)), na.action = na.exclude)
+model_1 <- lm(log(Salesstore$Profit+5000) ~ ((Salesstore$Order_Quantity)), na.action = na.exclude)
 summary(model_1)
 ```
 
@@ -134,7 +134,7 @@ The p-value of Model 1 shows that the 'Order Quantity' is significant when deter
 Within this scatterplot, we show the linear regression line on our initial log-level scatter plot of 'Profits' by 'Order Quantity' from our EDA section. 
 
 ```{r}
-plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = 0.034301)
+plot(LgL_order_scatter_plot) + geom_abline(intercept = summary(model_1)$coefficients[1, 1], slope = summary(model_1)$coefficients[2, 1])
 ```
 
 ## Model Building Process: Part 2
@@ -266,3 +266,11 @@ Yes, a unique BLP exists. The variables used are 'Log Profits' and 'Order Quanti
 One potential omitted variable is the Sales region. After performing some perfunctory data analysis, we see that the West Region alone is not only the most profitable but accounts for 35% for Office Supplies' sales and order quantity. It also has a profit/unit amount, $8.21, which is 69% higher than the Ofice Supplies category's average. No full-fledged statistical analysis was done for the effect of the bias, but if another categorical variable of "is_west_region" were created and was found to be statistically significant, this could fundamentally alter the model. The West region's over-performance could have a myriad of causes: better supply chain, bigger sales presence, larger in-built customer base, fewer competitors etc. The direction of the bias is towards zero  because the true estimator  of Profit, if the West region was included, would be potentially higher. One potential data point that could help mitigate this bias is the customer acquisition cost. If the West region is truly over-performing due to any of the issues raised above, then its customer acquisition cost/unit would be lower (lower spend marketing/promoting/advertising if competitors are scarce for example). With this data point, we could index the sales - customer acquisition cost as a new metric in addition to Profit that could help mitigate the impact of a regional advantage and make our model more inferential.
 
 ## Conclusion
+
+When analyzing our Sales store data, we reviewed key variables including profit, sales, order quantity, product category, and customer segment. The data was very clean to begin, with over 700 rows of data clearly labeled with no missing values. Our initial large scale linear model analyzed the relationship between profit vs order quantity, and we found that a log-level linear model of Profit vs Order Quantity was the best linear representation of our data. This model stated that for every change in the order quantity, the profit increases by (0.002 * the change in 'order quantity' * 100%). The r-squared value was rather small at 0.36, but given the natural variability in human shopping behavior we thought we should continue exploring this segment of our data to further understand if any additional variables could help explain the relationship between profit and order quantity.
+
+In the second part of our analysis we looked into the product category and customer segment categorical variables. With coefficient tests, we determined office supplies to be the only significant product category, and there were no significant customer segments. Then we created a new model with only the office supplies categorical variable and order quantity to determine profit. With ANOVA tests and coefficient tests we confirmed that this model better predicted profit than our original Profit vs Order Quantity model.
+
+We took our analysis one step further to understand if there was any interaction between order quantity and office supplies. The coefficient test showed a p-value of 5.094e-05 for the interaction term, confirming that is significant. This makes sense because customers probably buy office supply in bulk. The negative interaction coefficient of -0.0035 could reflect a discount the store offers if office supplies are ordered in bulk, negatively affecting the profit. Lastly our Akaike Information Criterion test showed that Model Office Interaction with Profit vs (order quantity + office supplies + the interaction term) has the lowest AIC score at -645.35, confirming it does the best job explaining the data of all models explored. 
+
+To answer our research question: how does order quantity affects profit and what effects do 'Product Category' and 'Customer Segment' variables have on profit as well? We determined that for every change in the order quantity, the profit increases by (0.004 * the change in 'order quantity' * 100%). If office supplies are purchased, the profit increases by (0.06 * 100%) + (-0.0035 * change in order quantity if any * 100%). The other product categoris or customer segments have no significant effect on the profit.
