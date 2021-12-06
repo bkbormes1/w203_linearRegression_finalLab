@@ -1,5 +1,5 @@
 ---
-title: "w203 Lab 2"
+title: "w203 Lab 2: Understanding the impact of product variables on profit"
 author: "Siddharth Ashokkumar, Blake Bormes, Giulia Olsson"
 subtitle: 'w203: Statistics for Data Science'
 output:
@@ -33,34 +33,31 @@ Salesstore <- read_csv("Salesstore.csv")
 
 ## Introduction
 
-In our Lab 2, our team wanted to investigate the relationship between the order quantity and profit derived from sales at an unspecified store. This relationship could help the public understand the general store profitability, but more importantly, also it could also help our audience to understand the relationship of profit to certain variables like product categories, customer segments, order quantities, and profits. Different retailers take on different sales strategies. 
+In our Lab 2, our team wanted to investigate the relationship between the order quantity and profit derived from sales at an unspecified store. This relationship could help the public understand the general store profitability, but more importantly, to understand the relationship of store profit to certain variables like product categories, customer segments, and order quantities. Different retailers take on different sales strategies. 
 
-A real-world familiar example of this is Costco; large American retailer, Costco, often sells certain consumer goods (e.g. groceries or office supplies) at a discounted price and negative margin to get customer foot traffic. Once customers are enticed by these eye-catching, low-priced goods, they often engage with higher margin items (e.g., consumer electronics) that are placed along the way to the lower-priced items of the store. 
+A real-world familiar example of this is Costco; large American retailer, Costco, often sells certain consumer goods (e.g. groceries or office supplies) at a discounted price and negative margin to get customer foot traffic. Once customers are enticed by these eye-catching, low-priced goods, they often engage with higher-margin items (e.g., consumer electronics) that are placed along the way to the lower-priced items of the store. 
 
-Our team wanted to understand interesting relationships exist within the store of our chosen data set.Finding correlations was our metric of success. 
+Our team wanted to understand interesting relationships exist within the store of our chosen data set. Finding correlations was our metric of success. 
 
 ## Data and Research Design
 
 Our data source from a Sales Store Product Details dataset in CSV format on Kaggle found at this link: https://www.kaggle.com/anuvagoyal/sales-store-product-details. These types of data sets are studied to find out the patterns in the selling structure and profit earned from them. 
-
 The data set contains various details of products sold at a store. The data set has 13 columns describing product and sales data, no missing values, and over 700 rows. 
 
-Because of its structure, this dat aset required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Order Quantity, Product Category, Product Sub Category, Product Name, and Customer Segment. The large amount of data will allow us to have large exploratory and testing datasets. Further analysis will need to be done to ensure the “other” categories for Product Category and Customer Segment are clean data entries. For example, are there N/A, Unknown, or Other values or are there clearly defined outputs for each data entry? 
+Because of its structure, this data set required limited cleaning; it has 13 well-defined variables to assist us in building our model including Profit, Order Quantity, Product Category, Product Sub Category, Product Name, and Customer Segment. Further analysis was done to ensure the “other” categories for Product Category and Customer Segment are clean data entries.
 
 Formally, our research question is as follows:
-What effects do variables like 'order quantity, 'product category, and 'customer segment' have on profit? 
-
-Our built models explore this question.
+What effects do variables like 'order quantity,' 'product category,' and 'customer segment' have on profit? 
 
 In order to answer our research question, we built three models: 
 
 1. The first model estimated the relationship between order quantity and sales or profit. Profit or Sales was the Y variable and Order Quantity was the X variable. We used scatter plots and t-tests to test the strength of the correlation coefficient, and to find the most linear relationship to explore.
 
-2. The second model estimated this relationship with additional covariates including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product. This modeling section may require a couple of tests to find the relationship between the different variables (e.g., log transforms) such as ANOVA tests to see if the relationship between certain variables is strong enough to warrant inclusion in the model.
+2. The second model estimated the model one relationship with additional covariates including the customer segment and product category, so we can further understand if there is any impact to profit based on whether the customer is corporate or consumer or if there is any impact to the profit based on the type of product. This modeling section may require a couple of tests to find the relationship between the different variables (e.g., log transforms) such as ANOVA tests to see if the relationship between certain variables is strong enough to warrant inclusion in the model.
 
 3. The third model added an interaction term between product category and order quantity. This allowed us to investigate whether the effect of sales was heterogeneous given different product categories through different tests including ANOVA and the Akaike Information Criterion test.
 
-## Initial Snapshot of Data in Order to Understand the Data
+## Initial Snapshot of the Data
 
 The below gives us a good sense of what categories lie within the data. Here, we see that the data includes Order ID, order priority, order quantity, profit, customer name, product category, and more details that will help us do our research.
 
@@ -254,7 +251,7 @@ Practically, we anticipate order quantity to interact with office supplies more 
 ## Limitations of Our Models
 ### Statistical Limitations
 
-For our first model, model 1 a large scale linear model, we evaluated all its assumptions. 
+For our first model, we evaluated all of its assumptions. 
 
 1) Is the data IID? 
 
@@ -266,7 +263,7 @@ Yes, a unique BLP exists. The variables used are 'Log Profits' and 'Order Quanti
 
 ### Structural Limitations
 
-One potential omitted variable is the Sales region. After performing some perfunctory data analysis, we see that the West Region alone is not only the most profitable but accounts for 35% for Office Supplies' sales and order quantity. It also has a profit/unit amount, $8.21, which is 69% higher than the Office Supplies category's average. No full-fledged statistical analysis was done for the effect of the bias, but if another categorical variable of "is_west_region" were created and was found to be statistically significant, this could fundamentally alter the model. The West region's over-performance could have a myriad of causes: better supply chain, bigger sales presence, larger in-built customer base, fewer competitors etc. The direction of the bias is towards zero  because the true estimator  of Profit, if the West region was included, would be potentially higher. One potential data point that could help mitigate this bias is the customer acquisition cost. If the West region is truly over-performing due to any of the issues raised above, then its customer acquisition cost/unit would be lower (lower spend marketing/promoting/advertising if competitors are scarce for example). With this data point, we could index the sales - customer acquisition cost as a new metric in addition to Profit that could help mitigate the impact of a regional advantage and make our model more inferential.
+One potential omitted variable is the sales region. After performing some perfunctory data analysis, we see that the West Region alone is not only the most profitable but accounts for 35% for Office Supplies' sales and order quantity. It also has a profit/unit amount, $8.21, which is 69% higher than the Office Supplies category's average. No full-fledged statistical analysis was done for the effect of the bias, but if another categorical variable of "is_west_region" were created and was found to be statistically significant, this could fundamentally alter the model. The West region's over-performance could have a myriad of causes: better supply chain, bigger sales presence, larger in-built customer base, fewer competitors, etc.. The direction of the bias is towards zero  because the true estimator  of profit, if the West region was included, would be potentially higher. One potential data point that could help mitigate this bias is the customer acquisition cost. If the West region is truly over-performing due to any of the issues raised above, then its customer acquisition cost/unit would be lower (lower spend marketing/promoting/advertising if competitors are scarce for example). With this data point, we could index the sales - customer acquisition cost as a new metric in addition to profit that could help mitigate the impact of a regional advantage and make our model more inferential.
 
 ## Conclusion
 
@@ -276,4 +273,4 @@ In the second part of our analysis we looked into the product category and custo
 
 We took our analysis one step further to understand if there was any interaction between order quantity and office supplies. The coefficient test showed a p-value of 5.094e-05 for the interaction term, confirming that is significant. This makes sense because customers probably buy office supply in bulk. The negative interaction coefficient of -0.0035 could reflect a discount the store offers if office supplies are ordered in bulk, negatively affecting the profit. Lastly our Akaike Information Criterion test showed that Model Office Interaction with Profit vs (order quantity + office supplies + the interaction term) has the lowest AIC score at -645.35, confirming it does the best job explaining the data of all models explored. 
 
-To answer our research question, we determined that for every change in the order quantity, the profit increases by (0.004 * the change in 'order quantity' * 100%). If office supplies are purchased, the profit increases by (0.06 * 100%) + (-0.0035 * change in order quantity if any * 100%). The other product categoris or customer segments have no significant effect on the profit.
+To answer our research question, we determined that for every change in the order quantity, the profit increases by (0.004 * the change in 'order quantity' * 100%). If office supplies are purchased, the profit increases by (0.06 * 100%) + (-0.0035 * change in order quantity if any * 100%). The other product categories or customer segments have no significant effect on the profit.
